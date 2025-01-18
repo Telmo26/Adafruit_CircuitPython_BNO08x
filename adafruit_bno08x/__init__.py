@@ -493,10 +493,11 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
     """
 
     def __init__(
-        self, reset: Optional[DigitalInOut] = None, debug: bool = False
+        self, reset: Optional[DigitalInOut] = None, inter: Optional[DigitalInOut] = None, debug: bool = False
     ) -> None:
         self._debug: bool = debug
         self._reset: Optional[DigitalInOut] = reset
+        self._inter: Optional[DigitalInOut] = inter
         self._dbg("********** __init__ *************")
         self._data_buffer: bytearray = bytearray(DATA_BUFFER_SIZE)
         self._command_buffer: bytearray = bytearray(12)
@@ -1088,6 +1089,22 @@ class BNO08X:  # pylint: disable=too-many-instance-attributes, too-many-public-m
 
         self._dbg("OK!")
         # all is good!
+
+    def _wait_for_int(self) -> bool:
+        """Waits for the interrupt pin to be up"""
+        if not self._inter:
+            return True
+        import digitalio  # pylint:disable=import-outside-toplevel
+
+        self._inter.direction = digitalio.Direction.INPUT
+        for _ in range(500) :
+            if self._inter.value == 0 :
+                return True
+            time.sleep(0.001)
+        self.hard_reset()
+
+        return False
+
 
     def _send_packet(self, channel: int, data: bytearray) -> Optional[int]:
         raise RuntimeError("Not implemented")

@@ -9,6 +9,7 @@
 from struct import pack_into
 from adafruit_bus_device import i2c_device
 from . import BNO08X, DATA_BUFFER_SIZE, const, Packet, PacketError
+import RPi.GPIO as GPIO
 
 _BNO08X_DEFAULT_ADDRESS = const(0x4A)
 
@@ -21,12 +22,14 @@ class BNO08X_I2C(BNO08X):
     """
 
     def __init__(
-        self, i2c_bus, reset=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False
+        self, i2c_bus, reset=None, interrupt=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False
     ):
         self.bus_device_obj = i2c_device.I2CDevice(i2c_bus, address)
-        super().__init__(reset, debug)
+        super().__init__(reset, interrupt, debug)
 
     def _send_packet(self, channel, data):
+        if not self._wait_for_int() :
+            return 0
         data_length = len(data)
         write_length = data_length + 4
 
@@ -49,6 +52,8 @@ class BNO08X_I2C(BNO08X):
 
     def _read_header(self):
         """Reads the first 4 bytes available as a header"""
+        if not self._wait_for_int() :
+            return 0
         with self.bus_device_obj as i2c:
             i2c.readinto(self._data_buffer, end=4)  # this is expecting a header
         packet_header = Packet.header_from_buffer(self._data_buffer)
@@ -56,6 +61,8 @@ class BNO08X_I2C(BNO08X):
         return packet_header
 
     def _read_packet(self):
+        if not self._wait_for_int() :
+            return 0
         with self.bus_device_obj as i2c:
             i2c.readinto(self._data_buffer, end=4)  # this is expecting a header?
         self._dbg("")
